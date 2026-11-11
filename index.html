@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アンテナ波長・周波数・エレメント長計算機</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-3xl mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold text-center text-indigo-700 mb-1">アンテナ波長・周波数・エレメント長計算機</h1>
+    <p class="text-center text-gray-500 text-sm mb-6">無線工学ツール — 周波数↔エレメント長を双方向計算</p>
+
+    <!-- タブ切替 -->
+    <div class="flex border-b border-gray-200 mb-6">
+      <button id="tab-freq" aria-label="周波数からエレメント長を計算"
+        class="px-5 py-2 text-sm font-semibold text-indigo-700 border-b-2 border-indigo-600 bg-white">周波数 → 長さ</button>
+      <button id="tab-len" aria-label="エレメント長から周波数を計算"
+        class="px-5 py-2 text-sm font-semibold text-gray-500 hover:text-indigo-600 border-b-2 border-transparent bg-white">長さ → 周波数</button>
+    </div>
+
+    <!-- 周波数→長さ パネル -->
+    <div id="panel-freq">
+      <div class="bg-white rounded-xl shadow p-5 mb-5">
+        <h2 class="font-semibold text-gray-700 mb-3">入力</h2>
+        <div class="flex gap-3 items-end flex-wrap">
+          <div>
+            <label for="freq-input" class="block text-xs text-gray-500 mb-1">周波数</label>
+            <input id="freq-input" type="number" value="144" min="0.001" step="any"
+              aria-label="周波数の数値"
+              class="border rounded-lg px-3 py-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+          </div>
+          <div>
+            <label for="freq-unit" class="block text-xs text-gray-500 mb-1">単位</label>
+            <select id="freq-unit" aria-label="周波数の単位"
+              class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              <option value="1">Hz</option>
+              <option value="1e3">kHz</option>
+              <option value="1e6" selected>MHz</option>
+              <option value="1e9">GHz</option>
+            </select>
+          </div>
+          <div>
+            <label for="shorten-slider" class="block text-xs text-gray-500 mb-1">短縮率: <span id="shorten-label">95</span>%</label>
+            <input id="shorten-slider" type="range" min="80" max="100" value="95" step="1"
+              aria-label="アンテナ短縮率スライダー（80〜100%）"
+              class="w-32 accent-indigo-500">
+          </div>
+          <button id="calc-freq-btn" aria-label="周波数からエレメント長を計算する"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-lg text-sm transition">計算</button>
+        </div>
+      </div>
+
+      <div id="freq-result" class="bg-white rounded-xl shadow p-5 mb-5 hidden">
+        <h2 class="font-semibold text-gray-700 mb-3">計算結果</h2>
+        <div id="freq-result-body" class="space-y-2 text-sm"></div>
+      </div>
+    </div>
+
+    <!-- 長さ→周波数 パネル -->
+    <div id="panel-len" class="hidden">
+      <div class="bg-white rounded-xl shadow p-5 mb-5">
+        <h2 class="font-semibold text-gray-700 mb-3">入力</h2>
+        <div class="flex gap-3 items-end flex-wrap">
+          <div>
+            <label for="len-input" class="block text-xs text-gray-500 mb-1">エレメント長 (mm)</label>
+            <input id="len-input" type="number" value="500" min="1" step="any"
+              aria-label="エレメント長（mm）"
+              class="border rounded-lg px-3 py-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+          </div>
+          <div>
+            <label for="len-type" class="block text-xs text-gray-500 mb-1">アンテナ種別</label>
+            <select id="len-type" aria-label="アンテナ種別選択"
+              class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              <option value="0.5">λ/2 ダイポール</option>
+              <option value="0.25">λ/4 モノポール</option>
+              <option value="0.625">5/8λ</option>
+              <option value="1">λ 全波長</option>
+            </select>
+          </div>
+          <div>
+            <label for="len-shorten" class="block text-xs text-gray-500 mb-1">短縮率: <span id="len-shorten-label">95</span>%</label>
+            <input id="len-shorten" type="range" min="80" max="100" value="95" step="1"
+              aria-label="逆算用短縮率スライダー"
+              class="w-32 accent-indigo-500">
+          </div>
+          <button id="calc-len-btn" aria-label="エレメント長から周波数を計算する"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-lg text-sm transition">計算</button>
+        </div>
+      </div>
+      <div id="len-result" class="bg-white rounded-xl shadow p-5 mb-5 hidden">
+        <h2 class="font-semibold text-gray-700 mb-3">計算結果</h2>
+        <div id="len-result-body" class="text-sm"></div>
+      </div>
+    </div>
+
+    <!-- アマチュア無線バンドプリセット -->
+    <div class="bg-white rounded-xl shadow p-5">
+      <h2 class="font-semibold text-gray-700 mb-3">アマチュア無線バンドプリセット</h2>
+      <div class="flex flex-wrap gap-2">
+        <button class="preset-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full border border-indigo-200 transition" data-freq="1.9" data-unit="1e6" aria-label="1.9MHzプリセット">1.9 MHz</button>
+        <button class="preset-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full border border-indigo-200 transition" data-freq="3.5" data-unit="1e6" aria-label="3.5MHzプリセット">3.5 MHz</button>
+        <button class="preset-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full border border-indigo-200 transition" data-freq="7" data-unit="1e6" aria-label="7MHzプリセット">7 MHz</button>
+        <button class="preset-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full border border-indigo-200 transition" data-freq="14" data-unit="1e6" aria-label="14MHzプリセット">14 MHz</button>
+        <button class="preset-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full border border-indigo-200 transition" data-freq="21" data-unit="1e6" aria-label="21MHzプリセット">21 MHz</button>
+        <button class="preset-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full border border-indigo-200 transition" data-freq="28" data-unit="1e6" aria-label="28MHzプリセット">28 MHz</button>
+        <button class="preset-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full border border-indigo-200 transition" data-freq="50" data-unit="1e6" aria-label="50MHzプリセット">50 MHz</button>
+        <button class="preset-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full border border-indigo-200 transition" data-freq="144" data-unit="1e6" aria-label="144MHzプリセット">144 MHz</button>
+        <button class="preset-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full border border-indigo-200 transition" data-freq="430" data-unit="1e6" aria-label="430MHzプリセット">430 MHz</button>
+        <button class="preset-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full border border-indigo-200 transition" data-freq="1200" data-unit="1e6" aria-label="1200MHzプリセット">1200 MHz</button>
+        <button class="preset-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full border border-indigo-200 transition" data-freq="2.4" data-unit="1e9" aria-label="2.4GHzプリセット">2.4 GHz</button>
+        <button class="preset-btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full border border-indigo-200 transition" data-freq="5.8" data-unit="1e9" aria-label="5.8GHzプリセット">5.8 GHz</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+    const C = 299792458; // m/s
+
+    const ANTENNA_TYPES = [
+      { label: 'λ/2 ダイポール', ratio: 0.5, desc: '最も基本的なアンテナ。半波長ダイポール。' },
+      { label: 'λ/4 モノポール（垂直）', ratio: 0.25, desc: '地板上の垂直アンテナ。' },
+      { label: '5/8λ 垂直', ratio: 0.625, desc: '利得が高い垂直アンテナ。移動通信向け。' },
+      { label: 'λ 全波長ループ', ratio: 1.0, desc: '全波長ループアンテナ。' },
+      { label: '3/2λ ダイポール', ratio: 1.5, desc: '高利得指向性ダイポール。' },
+      { label: '八木アンテナ（エレメント長 参考: λ/2）', ratio: 0.5, desc: '八木アンテナのエレメントはλ/2付近。要素数で利得変化。' },
+    ];
+
+    function fmtLen(m) {
+      if (m >= 1) return (m).toFixed(3) + ' m (' + (m*1000).toFixed(1) + ' mm)';
+      return (m*1000).toFixed(2) + ' mm';
+    }
+    function fmtFreq(hz) {
+      if (hz >= 1e9) return (hz/1e9).toFixed(4) + ' GHz';
+      if (hz >= 1e6) return (hz/1e6).toFixed(4) + ' MHz';
+      if (hz >= 1e3) return (hz/1e3).toFixed(4) + ' kHz';
+      return hz.toFixed(2) + ' Hz';
+    }
+
+    function calcFreqToLen() {
+      const fVal = parseFloat(document.getElementById('freq-input').value) || 144;
+      const fUnit = parseFloat(document.getElementById('freq-unit').value) || 1e6;
+      const shortening = parseFloat(document.getElementById('shorten-slider').value) / 100;
+      const fHz = fVal * fUnit;
+      const lambda = C / fHz;
+
+      const body = document.getElementById('freq-result-body');
+      body.innerHTML = `
+        <div class="p-3 bg-indigo-50 rounded-lg mb-3">
+          <span class="font-semibold text-indigo-700">波長 λ = ${escHtml(fmtLen(lambda))}</span>
+          <span class="text-gray-500 ml-2 text-xs">（短縮率 ${escHtml(String(Math.round(shortening*100)))}%）</span>
+        </div>`;
+
+      ANTENNA_TYPES.forEach(ant => {
+        const len = lambda * ant.ratio * shortening;
+        body.innerHTML += `
+          <div class="flex items-start gap-3 p-2 border rounded-lg hover:bg-gray-50">
+            <div class="flex-1">
+              <div class="font-medium text-gray-800">${escHtml(ant.label)}</div>
+              <div class="text-gray-500 text-xs">${escHtml(ant.desc)}</div>
+            </div>
+            <div class="text-right font-bold text-indigo-700 whitespace-nowrap">${escHtml(fmtLen(len))}</div>
+          </div>`;
+      });
+
+      document.getElementById('freq-result').classList.remove('hidden');
+    }
+
+    function calcLenToFreq() {
+      const lenMm = parseFloat(document.getElementById('len-input').value) || 500;
+      const ratio = parseFloat(document.getElementById('len-type').value) || 0.5;
+      const shortening = parseFloat(document.getElementById('len-shorten').value) / 100;
+      const lenM = lenMm / 1000;
+      // len = lambda * ratio * shortening  → lambda = len / (ratio * shortening) → f = C / lambda
+      const lambda = lenM / (ratio * shortening);
+      const freq = C / lambda;
+
+      const body = document.getElementById('len-result-body');
+      body.innerHTML = `
+        <div class="p-3 bg-indigo-50 rounded-lg mb-2">
+          <div class="font-semibold text-indigo-700 mb-1">計算された周波数: ${escHtml(fmtFreq(freq))}</div>
+          <div class="text-gray-500 text-xs">波長 λ = ${escHtml(fmtLen(lambda))} / 短縮率 ${escHtml(String(Math.round(shortening*100)))}%</div>
+        </div>
+        <div class="p-3 border rounded-lg text-gray-700">
+          対応アマチュアバンド: ${escHtml(findBand(freq))}
+        </div>`;
+
+      document.getElementById('len-result').classList.remove('hidden');
+    }
+
+    function findBand(hz) {
+      const bands = [
+        [1.8e6, 2e6, '1.9 MHz帯'],
+        [3.5e6, 3.8e6, '3.5 MHz帯'],
+        [7e6, 7.2e6, '7 MHz帯'],
+        [10.1e6, 10.15e6, '10 MHz帯'],
+        [14e6, 14.35e6, '14 MHz帯'],
+        [18.068e6, 18.168e6, '18 MHz帯'],
+        [21e6, 21.45e6, '21 MHz帯'],
+        [24.89e6, 24.99e6, '24 MHz帯'],
+        [28e6, 29.7e6, '28 MHz帯'],
+        [50e6, 54e6, '50 MHz帯'],
+        [144e6, 146e6, '144 MHz帯'],
+        [430e6, 440e6, '430 MHz帯'],
+        [1240e6, 1300e6, '1200 MHz帯'],
+        [2400e6, 2450e6, '2.4 GHz帯'],
+        [5600e6, 5850e6, '5.6 GHz帯'],
+      ];
+      const matched = bands.filter(([lo, hi]) => hz >= lo && hz <= hi).map(b => b[2]);
+      return matched.length > 0 ? matched.join('、') : '特定バンド外';
+    }
+
+    // タブ切替
+    document.getElementById('tab-freq').addEventListener('click', () => {
+      document.getElementById('panel-freq').classList.remove('hidden');
+      document.getElementById('panel-len').classList.add('hidden');
+      document.getElementById('tab-freq').className = 'px-5 py-2 text-sm font-semibold text-indigo-700 border-b-2 border-indigo-600 bg-white';
+      document.getElementById('tab-len').className = 'px-5 py-2 text-sm font-semibold text-gray-500 hover:text-indigo-600 border-b-2 border-transparent bg-white';
+    });
+    document.getElementById('tab-len').addEventListener('click', () => {
+      document.getElementById('panel-freq').classList.add('hidden');
+      document.getElementById('panel-len').classList.remove('hidden');
+      document.getElementById('tab-freq').className = 'px-5 py-2 text-sm font-semibold text-gray-500 hover:text-indigo-600 border-b-2 border-transparent bg-white';
+      document.getElementById('tab-len').className = 'px-5 py-2 text-sm font-semibold text-indigo-700 border-b-2 border-indigo-600 bg-white';
+    });
+
+    document.getElementById('shorten-slider').addEventListener('input', e => {
+      document.getElementById('shorten-label').textContent = e.target.value;
+    });
+    document.getElementById('len-shorten').addEventListener('input', e => {
+      document.getElementById('len-shorten-label').textContent = e.target.value;
+    });
+
+    document.getElementById('calc-freq-btn').addEventListener('click', calcFreqToLen);
+    document.getElementById('calc-len-btn').addEventListener('click', calcLenToFreq);
+
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('freq-input').value = btn.dataset.freq;
+        document.getElementById('freq-unit').value = btn.dataset.unit;
+        // タブを周波数→長さに切り替え
+        document.getElementById('tab-freq').click();
+        calcFreqToLen();
+      });
+    });
+
+    calcFreqToLen();
+  </script>
+</body>
+</html>
